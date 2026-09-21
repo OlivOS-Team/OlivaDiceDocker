@@ -61,7 +61,8 @@ COPY NapCat/config-example.json /release-backup/napcat/config/napcat-config-exam
 COPY LLBot/config-example.json /release-backup/napcat/config/llbot-config-example.json
 
 COPY OlivOS/entrypoint.sh /usr/local/bin/olivos-entrypoint
-RUN chmod +x /usr/local/bin/olivos-entrypoint
+COPY OlivOS/init-config.sh /usr/local/bin/olivos-init-config
+RUN chmod +x /usr/local/bin/olivos-entrypoint /usr/local/bin/olivos-init-config
 
 WORKDIR /app/OlivOS
 ENTRYPOINT ["olivos-entrypoint"]

@@ -11,8 +11,6 @@ set -e
 APP_DIR=/app/OlivOS
 BACKUP_DIR=/release-backup
 PLUGIN_DIR="${APP_DIR}/plugin/app"
-CONF_DIR="${APP_DIR}/conf"
-CONF_FILE="${CONF_DIR}/account.json"
 
 log() { echo "[entrypoint] $*"; }
 
@@ -53,70 +51,11 @@ for opk in "${BACKUP_DIR}"/plugin/app/*.opk; do
     sync_file "${opk}" "${PLUGIN_DIR}/$(basename "${opk}")"
 done
 
-# ---------- 3. 账户配置 ----------
-mkdir -p "${CONF_DIR}"
-
-if [ -f "${CONF_FILE}" ] && ! grep -q "sdk_type" "${CONF_FILE}"; then
-    log "检测到无效的账户配置，重新生成"
-    rm -f "${CONF_FILE}"
-fi
-
-if [ ! -f "${CONF_FILE}" ]; then
-    log "生成全新账户配置"
-    UIN="${LOGIN_UIN:-123456}"
-
-    if [ "${MODE:-}" = "llbot" ]; then
-        SDK_HOST="http://llbot"
-    else
-        SDK_HOST="http://napcat"
-    fi
-
-    cat > "${CONF_FILE}" <<EOF
-{
-    "account": [
-        {
-            "id": ${UIN},
-            "password": "",
-            "sdk_type": "onebot",
-            "platform_type": "qq",
-            "model_type": "default",
-            "server": {
-                "auto": false,
-                "type": "port",
-                "host": "${SDK_HOST}",
-                "port": 5700,
-                "access_token": "7777777"
-            },
-            "extends": {},
-            "debug": false
-        }
-    ]
-}
-EOF
-fi
-
-# ---------- 4. 登录端配置 ----------
-# 单独判断，不挂在上面那个 if 里面：否则用户只删掉 napcat 配置、account.json 还在
-# 的话，配置就永远不会重建了。已存在的一律保留用户改动。
-UIN="${LOGIN_UIN:-123456}"
-mkdir -p /app/napcat/config
-
-if [ "${MODE:-}" = "llbot" ]; then
-    TARGET_CONF="/app/napcat/config/config_${UIN}.json"
-    TEMPLATE="${BACKUP_DIR}/napcat/config/llbot-config-example.json"
-else
-    TARGET_CONF="/app/napcat/config/onebot11_${UIN}.json"
-    TEMPLATE="${BACKUP_DIR}/napcat/config/napcat-config-example.json"
-fi
-
-if [ ! -f "${TARGET_CONF}" ]; then
-    cp "${TEMPLATE}" "${TARGET_CONF}"
-    log "已生成登录端配置：${TARGET_CONF}"
-else
-    log "登录端配置已存在，保留用户改动：${TARGET_CONF}"
-fi
-
-# ---------- 5. 启动 ----------
+# ---------- 3. 配置初始化 ----------
+# 账号、WebUI 监听地址、登录端配置都交给这个脚本。它只补缺不覆盖——
+# 用户自己配的其它平台账号（比如 kook）、改过的端口，都不会被弄丢。
+export APP_DIR BACKUP_DIR
+olivos-init-config
 # 必须用 exec：否则 PID 1 是这个 shell，停止容器时 SIGTERM 发给 shell 而不是
 # OlivOS，宽限期白等，最后整个 cgroup 被 SIGKILL，骰子没机会落盘。
 cd "${APP_DIR}"
