@@ -122,7 +122,7 @@ jobs:
               echo "> Docker Hub 的 secret 还没配，本次只推 GHCR。"
               echo "> 配好 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 之后会自动变成双推。"
             fi
-          } >> $GITHUB_STEP_SUMMARY
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

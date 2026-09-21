@@ -114,6 +114,23 @@ docker compose up -d
 
 上游 OlivOS 的构建流程只产出 x86-64 的 Linux 包，暂时没有 arm64。构建流程已经按双架构写好了——清单里 `arm64` 那一格一旦有地址，镜像就会自动开始发 arm64，不需要再改任何配置。
 
+## 维护说明
+
+镜像发布全走 Actions，用到的两个工作流：
+
+- `sync-release.yml` 每 6 小时跑一次，解析上游版本写进 `release_info.json`。只有 OlivOS 主程序或 OlivaDiceCore 出了新版才会提交清单并触发构建，其余插件的新版本只是在构建时一并带上。
+- `docker-publish.yml` 读清单构建镜像并推送。也可以手动跑，指定通道即可。
+
+需要配的东西：
+
+**`GH_PAT`（必需）** —— `sync-release` 要往仓库里提交清单，还要触发构建工作流，这两件事默认的 `GITHUB_TOKEN` 都做不了。需要一个带 `repo` 和 `workflow` 权限的 PAT，配在仓库的 Actions secrets 里。
+
+**GHCR 包可见性（首次必须手动改一次）** —— GHCR 的包**首次推送后默认是私有的**，这时候用户 `docker pull` 会拿到 403。推完第一个镜像后去 package 的 Settings 里把 visibility 改成 public。
+
+**`DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`（可选）** —— 两个都配了就会在推 GHCR 的同时也推一份到 Docker Hub；没配就只推 GHCR，工作流会自动跳过 Docker Hub 那一步，不会报错。
+
+发新版本不需要手动打 tag，`sync-release` 检测到上游更新会自动跑完整条链路。
+
 ## 许可
 
 AGPL-3.0
