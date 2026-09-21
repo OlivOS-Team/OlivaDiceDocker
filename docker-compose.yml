@@ -1,5 +1,7 @@
 # OlivOS + NapCat 的组装示例。
 # 用法见 README：写好 .env（里面一个 ACCOUNT），然后 docker compose up -d。
+#
+# 两个容器互相按服务名访问，没有启动顺序要求，先后起来都行。
 
 services:
   olivos-app:
@@ -15,14 +17,21 @@ services:
       - LOGIN_UIN=${ACCOUNT}
       - MODE=napcat
     ports:
-      # OlivaDiceWebUI 独立服务版的管理页面。
-      # 监听端口由插件自己维护，这里只做映射——不要设
-      # OLIVADICE_STANDALONE_WEBUI_PORT，那个环境变量会盖掉面板里的设置。
-      - "8765:8765"
+      # OlivOS 自带的 WebUI，默认监听 20480。登录令牌在 conf/webui_token.txt，
+      # 第一次启动时自动生成。
+      #
+      # 两点要注意：
+      #   1. 它默认只绑 127.0.0.1，光映射端口在外面是连不上的，需要在
+      #      conf/config.json 里把 models.OlivOS_webUI.server.host 改成 0.0.0.0；
+      #   2. 这个功能目前只在预发布通道（0.11.90-alpha.x）里有，稳定版还没有。
+      - "20480:20480"
+      # OlivaDiceWebUI 独立服务版的管理页面，默认监听 8765。它和上面 OlivOS 自带的
+      # WebUI 是两个不同的东西，需要的话自己把这行打开。
+      # 端口由插件面板自己维护，所以不要设 OLIVADICE_STANDALONE_WEBUI_PORT——
+      # 那个环境变量会盖掉面板里的设置。
+      # - "8765:8765"
     networks:
       - olivos
-    depends_on:
-      - napcat
 
   napcat:
     image: mlikiowa/napcat-docker:latest
@@ -39,7 +48,6 @@ services:
       - MODE=olivos
     networks:
       - olivos
-    mac_address: "02:42:16:74:4c:b0"
 
 networks:
   olivos:

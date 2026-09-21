@@ -19,6 +19,13 @@
 
 组装出来是两个容器：`olivos-app` 跑 OlivOS 本体，`napcat` 负责 QQ 登录，两者在同一张 bridge 网络上按服务名互相访问。
 
+对外开的端口：
+
+- **20480** —— OlivOS 自带的 WebUI
+- **6099** —— NapCat 的 WebUI，扫码登录用的
+
+两个容器没有启动顺序要求，`olivos-app` 连不上 NapCat 时会自己重试。
+
 ### 准备
 
 先装好 Docker 和 Docker Compose，然后建目录、把 compose 和 `.env` 放进去：
@@ -78,10 +85,12 @@ docker run -d \
   mlikiowa/napcat-docker:latest
 
 # OlivOS 本体
+# 名字要用 olivos-app：自动生成的 OneBot 配置里指向的是
+# http://olivos-app:55001/OlivOSMsgApi/...，NapCat 得靠这个名字找到它。
 docker run -d \
-  --name olivos-main \
+  --name olivos-app \
   --network olivos \
-  -p 8765:8765 \
+  -p 20480:20480 \
   -e LOGIN_UIN=${ACCOUNT} \
   -e MODE=napcat \
   -v "$PWD/OlivOS:/app/OlivOS" \
@@ -89,12 +98,23 @@ docker run -d \
   ghcr.io/olivos-team/olivadicedocker:latest
 ```
 
+两个容器没有启动顺序要求，谁先起来都行——OlivOS 连不上 NapCat 时会自己重试。
+
 ## 管理面板
 
-镜像里带了 OlivaDiceWebUI 的两个版本：
+这里有两个不同的 WebUI，别混了。
 
-- **独立服务版**（`OlivaDiceWebUIStandalone.opk`）：自己监听 HTTP 端口，默认 **8765**，compose 里已经映射好了。这是容器环境下实际能用的那个。
-- **官方接入版**（`OlivaDiceWebUI.opk`）：挂在 OlivOS 自带的 WebUI 窗口里。OlivOS 那个窗口是桌面版的 pywebview，无头容器没有图形界面，所以这个版本装是装了，但在这个场景下用不上。
+**OlivOS 自带的 WebUI** —— 默认监听 **20480**，compose 里映射的就是这个。登录要输令牌，令牌在 `conf/webui_token.txt`，第一次启动时自动生成。
+
+有两点要注意：
+
+- 它默认只绑 `127.0.0.1`，光映射端口在外面还是连不上。要对外开放得在 `conf/config.json` 里把 `models.OlivOS_webUI.server.host` 改成 `0.0.0.0`，然后重启容器。
+- 这个功能目前只在**预发布通道**（0.11.90-alpha.x）里有，稳定版 0.11.81 还没合进去。用 stable 的话这个端口是空的。
+
+**OlivaDiceWebUI 插件** —— 镜像里带了它的两个版本，跟上面那个是两回事：
+
+- **官方接入版**（`OlivaDiceWebUI.opk`）：做成 OlivOS 自带 WebUI 里的一个页面，自己不占端口。前提是上面那个 WebUI 能访问。
+- **独立服务版**（`OlivaDiceWebUIStandalone.opk`）：自己监听 HTTP 端口，默认 **8765**，不依赖 OlivOS 的 WebUI。compose 里默认没映射，需要的话把那行 `8765:8765` 的注释打开。
 
 独立版的监听地址和端口由插件自己维护，在面板里改就行。**不要**去设 `OLIVADICE_STANDALONE_WEBUI_PORT` 之类的环境变量——环境变量优先级高于面板里的设置，一设就再也改不动了。
 
