@@ -1,0 +1,43 @@
+services:
+  olivos-app:
+    # 暂时从 GHCR 取。等 Docker Hub 那边配好之后两个仓库都会有同一批 tag，
+    # 到时候换成 shiaworkshop/olivadice 也行，两者内容一致。
+    image: ghcr.io/olivos-team/olivadicedocker:latest
+    container_name: olivos-main
+    working_dir: /app/OlivOS
+    volumes:
+      - "./OlivOS:/app/OlivOS"
+      - "./napcat/config:/app/napcat/config"
+    environment:
+      - LOGIN_UIN=${ACCOUNT}
+      - MODE=napcat
+    ports:
+      # OlivaDiceWebUI 独立服务版的管理页面。
+      # 端口由插件自己在面板里维护，这里只做映射——所以不要设
+      # OLIVADICE_STANDALONE_WEBUI_PORT，那个环境变量会盖掉面板里的设置。
+      - "8765:8765"
+    networks:
+      - olivos
+    depends_on:
+      - napcat
+
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: napcat
+    hostname: DiceZone-${ACCOUNT}
+    ports:
+      - "6099:6099"
+    volumes:
+      - "./napcat/config:/app/napcat/config"
+      - "./napcat/QQ_DATA:/app/.config/QQ"
+      - "./OlivOS:/app/OlivOS"
+    environment:
+      - ACCOUNT=${ACCOUNT}
+      - MODE=olivos
+    networks:
+      - olivos
+    mac_address: "02:42:16:74:4c:b0"
+
+networks:
+  olivos:
+    driver: bridge

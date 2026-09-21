@@ -1,0 +1,153 @@
+name: Docker Build and Push
+
+# 构建镜像并推到镜像仓库。
+# 版本信息全部来自 release_info.json——由 sync-release.yml 维护，这里只读不解析，
+# 保证同一个清单一定构建出同一批版本。
+#
+# 仓库策略：GHCR 永远推（用 Actions 自带的 GITHUB_TOKEN，不需要配任何 secret）；
+# Docker Hub 只在 secrets 配齐之后才推。两个都在的时候就是双推。
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '构建类型：stable（正式版）或 pre（预发布版）'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - pre
+
+env:
+  # Docker Hub 的仓库名。没配 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 时这一路会被跳过。
+  DOCKERHUB_REPO: shiaworkshop/olivadice
+  DOCKERFILE_PATH: OlivOS/Dockerfile
+
+concurrency:
+  group: docker-publish-${{ inputs.build_type }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # 推 GHCR 需要这个
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: 从清单读取版本、架构与目标仓库
+        id: manifest
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -e
+          BT="${{ inputs.build_type }}"
+
+          TAG=$(jq -r --arg bt "$BT" '.[$bt].app.tag // ""' release_info.json)
+          if [ -z "$TAG" ]; then
+            echo "::error::release_info.json 里没有 $BT 通道的主程序版本"
+            exit 1
+          fi
+
+          # arm64 地址在上游产出之前是 null，这时只发 amd64，不让构建失败。
+          # 上游那边 arm64 合进去之后清单里这一格会自动填上，这里不用改。
+          ARM64=$(jq -r --arg bt "$BT" '.[$bt].app.arm64 // ""' release_info.json)
+          if [ -n "$ARM64" ]; then
+            PLATFORMS="linux/amd64,linux/arm64"
+            ARCH_NOTE="amd64 + arm64"
+          else
+            PLATFORMS="linux/amd64"
+            ARCH_NOTE="仅 amd64（上游暂无 arm64 产物）"
+          fi
+
+          # GHCR 的镜像路径必须全小写，直接从仓库名推导——
+          # 这样以后换仓库名或换组织，这里都不用跟着改
+          GHCR_REPO="ghcr.io/$(printf '%s' "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+
+          # secrets 不能直接写在 if: 里，所以在这里判断好再往下传
+          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+            DOCKERHUB=true
+          else
+            DOCKERHUB=false
+          fi
+
+          # 组 tag。pre 通道刻意不打 latest：latest 必须始终是稳定版，
+          # 否则预发布一构建就把所有人的 latest 换掉了。
+          TAGLIST=()
+          add_repo() {
+            local r="$1"
+            TAGLIST+=("${r}:${TAG}")
+            if [ "$BT" = "stable" ]; then
+              TAGLIST+=("${r}:stable" "${r}:latest")
+            else
+              TAGLIST+=("${r}:pre")
+            fi
+          }
+
+          add_repo "$GHCR_REPO"
+          REGISTRY_NOTE="$GHCR_REPO"
+          if [ "$DOCKERHUB" = "true" ]; then
+            add_repo "$DOCKERHUB_REPO"
+            REGISTRY_NOTE="${GHCR_REPO} + ${DOCKERHUB_REPO}"
+          fi
+
+          TAGS=$(printf '%s\n' "${TAGLIST[@]}")
+
+          {
+            echo "platforms=${PLATFORMS}"
+            echo "ghcr_repo=${GHCR_REPO}"
+            echo "dockerhub=${DOCKERHUB}"
+            echo "tags<<TAGS_EOF"
+            echo "${TAGS}"
+            echo "TAGS_EOF"
+          } >> $GITHUB_OUTPUT
+
+          {
+            echo "### 构建信息"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "| --- | --- |"
+            echo "| 通道 | ${BT} |"
+            echo "| 上游版本 | ${TAG} |"
+            echo "| 架构 | ${ARCH_NOTE} |"
+            echo "| 目标仓库 | ${REGISTRY_NOTE} |"
+            echo "| 插件数 | $(jq -r --arg bt "$BT" '.[$bt].plugins | length' release_info.json) |"
+            echo ""
+            if [ "$DOCKERHUB" = "false" ]; then
+              echo "> Docker Hub 的 secret 还没配，本次只推 GHCR。"
+              echo "> 配好 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 之后会自动变成双推。"
+            fi
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        if: steps.manifest.outputs.dockerhub == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ steps.manifest.outputs.platforms }}
+          push: true
+          build-args: |
+            BUILD_TYPE=${{ inputs.build_type }}
+          tags: ${{ steps.manifest.outputs.tags }}

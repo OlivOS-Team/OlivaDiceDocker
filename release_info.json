@@ -1,0 +1,131 @@
+{
+  "generated_at": "2026-09-21T01:55:38Z",
+  "stable": {
+    "app": {
+      "tag": "0.11.81",
+      "published_at": "2025-12-28T16:20:17Z",
+      "amd64": "https://github.com/OlivOS-Team/OlivOS/releases/download/0.11.81/OlivOS-Linux-0.11.81.zip",
+      "arm64": null
+    },
+    "plugins": [
+      {
+        "name": "OlivaDiceCore",
+        "tag": "3.4.53",
+        "file": "OlivaDiceCore.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceCore/releases/download/3.4.53/OlivaDiceCore.opk"
+      },
+      {
+        "name": "OlivaDiceJoy",
+        "tag": "3.0.16",
+        "file": "OlivaDiceJoy.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceJoy/releases/download/3.0.16/OlivaDiceJoy.opk"
+      },
+      {
+        "name": "OlivaDiceLogger",
+        "tag": "3.0.28",
+        "file": "OlivaDiceLogger.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceLogger/releases/download/3.0.28/OlivaDiceLogger.opk"
+      },
+      {
+        "name": "OlivaDiceMaster",
+        "tag": "3.0.22",
+        "file": "OlivaDiceMaster.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceMaster/releases/download/3.0.22/OlivaDiceMaster.opk"
+      },
+      {
+        "name": "OlivaDiceOdyssey",
+        "tag": "3.0.15",
+        "file": "OlivaDiceOdyssey.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceOdyssey/releases/download/3.0.15/OlivaDiceOdyssey.opk"
+      },
+      {
+        "name": "OlivaStoryCore",
+        "tag": "3.0.5",
+        "file": "OlivaStoryCore.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaStoryCore/releases/download/3.0.5/OlivaStoryCore.opk"
+      },
+      {
+        "name": "ChanceCustom",
+        "tag": "0.2.20",
+        "file": "ChanceCustom.opk",
+        "url": "https://github.com/OlivOS-Team/ChanceCustom/releases/download/0.2.20/ChanceCustom.opk"
+      },
+      {
+        "name": "OlivaDiceWebUI",
+        "tag": "v20260921(1)",
+        "file": "OlivaDiceWebUI.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%281%29/OlivaDiceWebUI.opk"
+      },
+      {
+        "name": "OlivaDiceWebUIStandalone",
+        "tag": "v20260921(1)",
+        "file": "OlivaDiceWebUIStandalone.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%281%29/OlivaDiceWebUIStandalone.opk"
+      }
+    ]
+  },
+  "pre": {
+    "app": {
+      "tag": "0.11.90-alpha.3",
+      "published_at": "2026-09-20T07:13:50Z",
+      "amd64": "https://github.com/OlivOS-Team/OlivOS/releases/download/0.11.90-alpha.3/OlivOS-Linux-0.11.90-alpha.3.zip",
+      "arm64": null
+    },
+    "plugins": [
+      {
+        "name": "OlivaDiceCore",
+        "tag": "3.4.53",
+        "file": "OlivaDiceCore.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceCore/releases/download/3.4.53/OlivaDiceCore.opk"
+      },
+      {
+        "name": "OlivaDiceJoy",
+        "tag": "3.0.16",
+        "file": "OlivaDiceJoy.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceJoy/releases/download/3.0.16/OlivaDiceJoy.opk"
+      },
+      {
+        "name": "OlivaDiceLogger",
+        "tag": "3.0.28",
+        "file": "OlivaDiceLogger.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceLogger/releases/download/3.0.28/OlivaDiceLogger.opk"
+      },
+      {
+        "name": "OlivaDiceMaster",
+        "tag": "3.0.22",
+        "file": "OlivaDiceMaster.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceMaster/releases/download/3.0.22/OlivaDiceMaster.opk"
+      },
+      {
+        "name": "OlivaDiceOdyssey",
+        "tag": "3.0.15",
+        "file": "OlivaDiceOdyssey.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceOdyssey/releases/download/3.0.15/OlivaDiceOdyssey.opk"
+      },
+      {
+        "name": "OlivaStoryCore",
+        "tag": "3.0.5",
+        "file": "OlivaStoryCore.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaStoryCore/releases/download/3.0.5/OlivaStoryCore.opk"
+      },
+      {
+        "name": "ChanceCustom",
+        "tag": "0.2.21-alpha.1",
+        "file": "ChanceCustom.opk",
+        "url": "https://github.com/OlivOS-Team/ChanceCustom/releases/download/0.2.21-alpha.1/ChanceCustom.opk"
+      },
+      {
+        "name": "OlivaDiceWebUI",
+        "tag": "v20260921(1)",
+        "file": "OlivaDiceWebUI.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%281%29/OlivaDiceWebUI.opk"
+      },
+      {
+        "name": "OlivaDiceWebUIStandalone",
+        "tag": "v20260921(1)",
+        "file": "OlivaDiceWebUIStandalone.opk",
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%281%29/OlivaDiceWebUIStandalone.opk"
+      }
+    ]
+  }
+}

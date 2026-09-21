@@ -1,0 +1,118 @@
+name: Sync OlivOS Release
+
+# 解析上游版本，写进 release_info.json，再按需触发镜像构建。
+#
+# 发版触发条件只有两个来源：OlivOS 主程序，或 OlivaDiceCore。
+# 其余插件的版本变动会被记进清单（下次重建时一并带上），但不单独触发构建——
+# 否则 OlivaDiceWebUI 一天发两次版，Docker Hub 上会被它刷屏。
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+# 同一时刻只跑一个，避免两次运行抢着提交清单
+concurrency:
+  group: sync-olivos-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: 解析上游版本
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          bash scripts/resolve-release.sh > /tmp/new_manifest.json
+          echo "解析结果："
+          jq '{generated_at,
+               stable: {app: .stable.app.tag, plugins: [.stable.plugins[] | "\(.name)@\(.tag)"]},
+               pre: {app: .pre.app.tag, plugins: [.pre.plugins[] | "\(.name)@\(.tag)"]}}' \
+             /tmp/new_manifest.json
+
+      - name: 校验清单完整性
+        run: |
+          # 解析过程中某个仓库取不到时会打警告并跳过，那种半成品清单一旦提交，
+          # 镜像里就会少插件。这里直接拦住，宁可这次不发版。
+          FAIL=0
+          for ch in stable pre; do
+            COUNT=$(jq -r --arg ch "$ch" '.[$ch].plugins | length' /tmp/new_manifest.json)
+            if [ "$COUNT" -lt 9 ]; then
+              echo "::error::$ch 通道只解析到 $COUNT 个 opk，应有 9 个"
+              FAIL=1
+            fi
+            AMD=$(jq -r --arg ch "$ch" '.[$ch].app.amd64 // ""' /tmp/new_manifest.json)
+            if [ -z "$AMD" ]; then
+              echo "::error::$ch 通道缺少主程序 amd64 下载地址"
+              FAIL=1
+            fi
+          done
+          [ "$FAIL" -eq 0 ] || exit 1
+          echo "清单完整，stable 与 pre 各 9 个 opk"
+
+      - name: 判断是否需要发版
+        id: decide
+        run: |
+          # 只比主程序和 OlivaDiceCore 的版本，其余插件不参与判断
+          changed() {
+            local ch="$1" new_app new_core old_app old_core
+            new_app=$(jq -r --arg ch "$ch" '.[$ch].app.tag // ""' /tmp/new_manifest.json)
+            new_core=$(jq -r --arg ch "$ch" '[.[$ch].plugins[] | select(.name == "OlivaDiceCore")][0].tag // ""' /tmp/new_manifest.json)
+            old_app=$(jq -r --arg ch "$ch" '.[$ch].app.tag // ""' release_info.json)
+            old_core=$(jq -r --arg ch "$ch" '[.[$ch].plugins[] | select(.name == "OlivaDiceCore")][0].tag // ""' release_info.json)
+            if [ "$new_app" != "$old_app" ]; then
+              echo "$ch 主程序：$old_app -> $new_app"
+              return 0
+            fi
+            if [ "$new_core" != "$old_core" ]; then
+              echo "$ch 核心：$old_core -> $new_core"
+              return 0
+            fi
+            return 1
+          }
+
+          STABLE=false
+          PRE=false
+          if changed stable; then STABLE=true; fi
+          if changed pre; then PRE=true; fi
+
+          echo "STABLE=$STABLE" >> $GITHUB_ENV
+          echo "PRE=$PRE" >> $GITHUB_ENV
+
+          if [ "$STABLE" = "false" ] && [ "$PRE" = "false" ]; then
+            echo "主程序与核心版本都没有变化，本次不发版"
+          fi
+
+      - name: 提交清单并触发构建
+        if: env.STABLE == 'true' || env.PRE == 'true'
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          cp /tmp/new_manifest.json release_info.json
+
+          git config user.name "github-actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add release_info.json
+          git commit -m "更新上游版本 - stable: $(jq -r '.stable.app.tag' release_info.json), pre: $(jq -r '.pre.app.tag' release_info.json)"
+          git push "https://${{ github.actor }}:$GH_PAT@github.com/${{ github.repository }}.git"
+
+          dispatch() {
+            echo "触发 $1 通道构建"
+            curl -sS -X POST \
+              -H "Authorization: Bearer $GH_PAT" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/workflows/docker-publish.yml/dispatches" \
+              -d '{"ref": "main", "inputs": {"build_type": "'"$1"'"}}'
+          }
+
+          if [ "$STABLE" = "true" ]; then dispatch stable; fi
+          if [ "$PRE" = "true" ]; then dispatch pre; fi
