@@ -1,11 +1,14 @@
+# OlivOS + NapCat 的组装示例。
+# 用法见 README：写好 .env（里面一个 ACCOUNT），然后 docker compose up -d。
+
 services:
   olivos-app:
-    # 暂时从 GHCR 取。等 Docker Hub 那边配好之后两个仓库都会有同一批 tag，
-    # 到时候换成 shiaworkshop/olivadice 也行，两者内容一致。
     image: ghcr.io/olivos-team/olivadicedocker:latest
     container_name: olivos-main
     working_dir: /app/OlivOS
     volumes:
+      # 程序和数据都在这个目录里。升级时入口脚本只覆盖程序文件，
+      # conf/ 与 plugin/data/ 不会被动。
       - "./OlivOS:/app/OlivOS"
       - "./napcat/config:/app/napcat/config"
     environment:
@@ -13,7 +16,7 @@ services:
       - MODE=napcat
     ports:
       # OlivaDiceWebUI 独立服务版的管理页面。
-      # 端口由插件自己在面板里维护，这里只做映射——所以不要设
+      # 监听端口由插件自己维护，这里只做映射——不要设
       # OLIVADICE_STANDALONE_WEBUI_PORT，那个环境变量会盖掉面板里的设置。
       - "8765:8765"
     networks:
@@ -24,7 +27,7 @@ services:
   napcat:
     image: mlikiowa/napcat-docker:latest
     container_name: napcat
-    hostname: DiceZone-${ACCOUNT}
+    hostname: olivos-${ACCOUNT}
     ports:
       - "6099:6099"
     volumes:

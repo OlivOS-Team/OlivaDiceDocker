@@ -20,8 +20,6 @@ on:
           - pre
 
 env:
-  # Docker Hub 的仓库名。没配 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 时这一路会被跳过。
-  DOCKERHUB_REPO: shiaworkshop/olivadice
   DOCKERFILE_PATH: OlivOS/Dockerfile
 
 concurrency:
@@ -42,6 +40,7 @@ jobs:
       - name: 从清单读取版本、架构与目标仓库
         id: manifest
         env:
+          DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
@@ -69,8 +68,10 @@ jobs:
           # 这样以后换仓库名或换组织，这里都不用跟着改
           GHCR_REPO="ghcr.io/$(printf '%s' "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
 
-          # secrets 不能直接写在 if: 里，所以在这里判断好再往下传
-          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+          # 推到 Docker Hub 是可选的，而且这里的仓库名从仓库变量读，
+          # 代码里不写死任何具体账号。三个值齐了才推，缺一个就只推 GHCR。
+          # secrets 不能直接写在 if: 里，所以在这里判断好再往下传。
+          if [ -n "${DOCKERHUB_REPO}" ] && [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
             DOCKERHUB=true
           else
             DOCKERHUB=false
@@ -119,8 +120,9 @@ jobs:
             echo "| 插件数 | $(jq -r --arg bt "$BT" '.[$bt].plugins | length' release_info.json) |"
             echo ""
             if [ "$DOCKERHUB" = "false" ]; then
-              echo "> Docker Hub 的 secret 还没配，本次只推 GHCR。"
-              echo "> 配好 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 之后会自动变成双推。"
+              echo "> 本次只推 GHCR。"
+              echo "> 要同时推 Docker Hub 的话，需要配好仓库变量 \`DOCKERHUB_REPO\`"
+              echo "> 与 secrets \`DOCKERHUB_USERNAME\` / \`DOCKERHUB_TOKEN\`，三个齐了会自动双推。"
             fi
           } | tee -a "$GITHUB_STEP_SUMMARY"
 

@@ -1,12 +1,10 @@
 # OlivaDiceDocker
 
-在 Linux 上用 docker-compose 快速组装 [OlivOS](https://github.com/OlivOS-Team/OlivOS) + [NapCat](https://github.com/NapNeko/NapCatQQ) 或 [LLBot](https://github.com/LLOneBot/LuckyLilliaBot)，附带青果骰的常用核心插件。
+在 Linux 上用 Docker 部署 [OlivOS](https://github.com/OlivOS-Team/OlivOS) + [NapCat](https://github.com/NapNeko/NapCatQQ)，附带青果骰的常用核心插件。
 
-和旧项目最大的区别：**不再在构建时拉取上游源码**。镜像直接消费上游编译好的 release 产物——主程序用 PyInstaller 打好的单文件二进制，插件用各自 release 里的 opk。构建从几分钟降到几十秒，也不再需要 Python 环境。
+镜像不依赖上游源码。构建时直接下载上游 release 里编译好的产物——主程序用 PyInstaller 打好的单文件二进制，插件用各自 release 里的 opk。所以构建很快，镜像里也不需要 Python 环境。
 
-[GHCR](https://github.com/OlivOS-Team/OlivaDiceDocker/pkgs/container/olivadicedocker) · 镜像地址 `ghcr.io/olivos-team/olivadicedocker`
-
-> 目前只在 GHCR 上发布。Docker Hub 那边配好之后会同步推一份 `shiaworkshop/olivadice`，两个仓库的 tag 和内容完全一致，用哪个都行。
+镜像地址：`ghcr.io/olivos-team/olivadicedocker`
 
 ## 镜像标签
 
@@ -15,31 +13,15 @@
 
 `latest` 始终指向正式版，预发布通道不会去动它。
 
-## 一键部署
+## 用 docker-compose 部署
 
-```bash
-bash <(curl -sL olivos.dice.zone)
-```
+推荐用这种方式。仓库里的 `docker-compose.yml` 是一份 NapCat 的组装示例，可以直接拿来用。
 
-交互式引导，按提示选版本渠道、登录方式和要部署的数量即可。
+组装出来是两个容器：`olivos-app` 跑 OlivOS 本体，`napcat` 负责 QQ 登录，两者在同一张 bridge 网络上按服务名互相访问。
 
-### 参数用法
+### 准备
 
-```bash
-bash <(curl -sL olivos.dice.zone) -a 123456 -c stable -m napcat -n 1
-```
-
-- `-a`：骰娘 QQ 号
-- `-c`：版本渠道（latest / stable / pre，默认 latest）
-- `-m`：登录方式（napcat / llbot，默认 napcat）
-- `-n`：部署数量（1-99，默认 1）
-- `-y`：静默模式，跳过确认
-
-## 手动部署
-
-### 准备工作
-
-装好 Docker 和 Docker Compose。然后建目录、写 `.env`：
+先装好 Docker 和 Docker Compose，然后建目录、把 compose 和 `.env` 放进去：
 
 ```bash
 mkdir -p -m 755 /opt/OlivaDiceDocker
@@ -49,13 +31,14 @@ wget https://raw.githubusercontent.com/OlivOS-Team/OlivaDiceDocker/refs/heads/ma
 echo 'ACCOUNT=你的骰娘QQ号' > .env
 ```
 
-`.env` 里的 `ACCOUNT` 就是骰娘账号，必须改掉。
+`.env` 里的 `ACCOUNT` 是骰娘账号，必须改掉。
 
-### 运行
+### 启动
 
 ```bash
 docker compose up -d      # 启动
 docker compose ps         # 查看状态
+docker compose logs -f    # 跟踪日志
 docker compose down       # 停止
 ```
 
@@ -66,11 +49,45 @@ docker compose pull
 docker compose up -d
 ```
 
-程序文件在容器启动时会自动比对更新，配置和数据都留着，不用担心被覆盖。
+程序文件在容器启动时会自动比对更新，配置和数据都留着，不会被覆盖。
 
 ### 登录
 
-容器日志里能看到二维码，也推荐直接访问 NapCat 或 LLBot 的 WebUI 扫码登录，端口 6099 起。
+容器日志里能看到二维码，也可以直接访问 NapCat 的 WebUI 扫码登录，端口 6099。
+
+## 用 docker run 部署
+
+不想用 compose 的话，等价的手工方式是这样。两个容器要在同一张网络上，否则 OlivOS 找不到 NapCat。
+
+```bash
+ACCOUNT=你的骰娘QQ号
+
+docker network create olivos
+
+# 登录端
+docker run -d \
+  --name napcat \
+  --network olivos \
+  --hostname olivos-${ACCOUNT} \
+  -p 6099:6099 \
+  -e ACCOUNT=${ACCOUNT} \
+  -e MODE=olivos \
+  -v "$PWD/napcat/config:/app/napcat/config" \
+  -v "$PWD/napcat/QQ_DATA:/app/.config/QQ" \
+  -v "$PWD/OlivOS:/app/OlivOS" \
+  mlikiowa/napcat-docker:latest
+
+# OlivOS 本体
+docker run -d \
+  --name olivos-main \
+  --network olivos \
+  -p 8765:8765 \
+  -e LOGIN_UIN=${ACCOUNT} \
+  -e MODE=napcat \
+  -v "$PWD/OlivOS:/app/OlivOS" \
+  -v "$PWD/napcat/config:/app/napcat/config" \
+  ghcr.io/olivos-team/olivadicedocker:latest
+```
 
 ## 管理面板
 
@@ -91,11 +108,7 @@ docker compose up -d
 
 你自己放进 `plugin/app/` 的第三方插件不会被碰，只有镜像里固定的那几个会被更新。
 
-## 从 OlivOS-Docker 迁移
-
-把 compose 里的镜像名从 `shiaworkshop/olivos` 换成 `ghcr.io/olivos-team/olivadicedocker`，重新拉取启动即可。
-
-旧方案是在容器里克隆源码跑的，数据目录里躺着一整套源码。新入口脚本启动时会先把这些清掉——特别是那个 `OlivOS/` 目录，它和新的可执行文件同名，不清掉会直接导致程序起不来。`conf/` 和 `plugin/data/` 都会原样保留。
+如果之前用的是容器内拉源码的老方案，数据目录里会残留一整套源码。入口脚本启动时会先清掉这些——特别是那个 `OlivOS/` 目录，它和新的可执行文件同名，不清掉会直接导致程序起不来。`conf/` 和 `plugin/data/` 都会原样保留。
 
 ## 更新机制
 
@@ -104,7 +117,7 @@ docker compose up -d
 1. 上游 OlivOS 主程序发了新版本
 2. OlivaDiceCore 发了新版本
 
-其余插件（Joy / Logger / Master / Odyssey / StoryCore / ChanceCustom / WebUI）的新版本不会单独触发构建，但每次构建时都会连同当时的最新版本一起打包进去。这么定是因为 WebUI 一天能发两三次，全都要触发构建的话 Docker Hub 上会被刷屏。
+其余插件（Joy / Logger / Master / Odyssey / StoryCore / ChanceCustom / WebUI）的新版本不会单独触发构建，但每次构建时都会连同当时的最新版本一起打包进去。这么定是因为 WebUI 一天能发两三次，全都要触发构建的话镜像仓库会被刷屏。
 
 版本信息全部记在 `release_info.json` 里，由 `scripts/resolve-release.sh` 解析上游生成。同一个清单构建出来的镜像，每个组件的版本都是固定的，不会出现同一个 tag 拉两次内容不一样的情况。
 
@@ -127,7 +140,7 @@ docker compose up -d
 
 **GHCR 包可见性（首次必须手动改一次）** —— GHCR 的包**首次推送后默认是私有的**，这时候用户 `docker pull` 会拿到 403。推完第一个镜像后去 package 的 Settings 里把 visibility 改成 public。
 
-**`DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`（可选）** —— 两个都配了就会在推 GHCR 的同时也推一份到 Docker Hub；没配就只推 GHCR，工作流会自动跳过 Docker Hub 那一步，不会报错。
+**推 Docker Hub（可选）** —— 需要一个官方 Docker Hub 账号。在仓库的 Variables 里加一个 `DOCKERHUB_REPO`（值形如 `账号名/仓库名`），再在 Secrets 里配 `DOCKERHUB_USERNAME` 和 `DOCKERHUB_TOKEN`。三个都齐了就会在推 GHCR 的同时也推一份；任何一个没配就只推 GHCR，工作流会自动跳过，不会报错。
 
 发新版本不需要手动打 tag，`sync-release` 检测到上游更新会自动跑完整条链路。
 
