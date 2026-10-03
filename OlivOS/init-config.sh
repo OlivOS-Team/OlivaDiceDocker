@@ -67,8 +67,12 @@ init_webui_host() {
     # 空文件就从空对象起手
     if [ -z "${current}" ]; then base='{}'; else base="${current}"; fi
 
+    # system 这一层必须在。OlivOS 合并 config.json 时逐项去取 .system.init、
+    # .system.event……（bootAPI.patch_config_by_path），整层缺了就是 KeyError，
+    # 程序第一次启动就崩。只补一个空对象：里面没写的项照样用 OlivOS 的默认值。
     out=$(printf '%s' "${base}" | jq --argjson d "${WEBUI_SERVER_DEFAULTS}" '
-        .models = (
+        .system = (if ((.system // null) | type) == "object" then .system else {} end)
+        | .models = (
             (if ((.models // null) | type) == "object" then .models else {} end)
             | .OlivOS_webUI = (
                 (if ((.OlivOS_webUI // null) | type) == "object" then .OlivOS_webUI else {} end)
