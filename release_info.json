@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23T11:07:12Z",
+  "generated_at": "2026-10-06T22:31:01Z",
   "stable": {
     "app": {
       "tag": "0.11.81",
@@ -52,24 +52,24 @@
       },
       {
         "name": "OlivaDiceWebUI",
-        "tag": "v20260921(3)",
+        "tag": "v26.0928.01",
         "file": "OlivaDiceWebUI.opk",
-        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%283%29/OlivaDiceWebUI.opk"
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v26.0928.01/OlivaDiceWebUI.opk"
       },
       {
         "name": "OlivaDiceWebUIStandalone",
-        "tag": "v20260921(3)",
+        "tag": "v26.0928.01",
         "file": "OlivaDiceWebUIStandalone.opk",
-        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%283%29/OlivaDiceWebUIStandalone.opk"
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v26.0928.01/OlivaDiceWebUIStandalone.opk"
       }
     ]
   },
   "pre": {
     "app": {
-      "tag": "0.11.90-alpha.4",
-      "published_at": "2026-09-23T09:57:26Z",
-      "amd64": "https://github.com/OlivOS-Team/OlivOS/releases/download/0.11.90-alpha.4/OlivOS-Linux-0.11.90-alpha.4.zip",
-      "arm64": "https://github.com/OlivOS-Team/OlivOS/releases/download/0.11.90-alpha.4/OlivOS-Linux-arm64-0.11.90-alpha.4.zip"
+      "tag": "1.0.0-rc.1",
+      "published_at": "2026-10-06T17:04:53Z",
+      "amd64": "https://github.com/OlivOS-Team/OlivOS/releases/download/1.0.0-rc.1/OlivOS-Linux-1.0.0-rc.1.zip",
+      "arm64": "https://github.com/OlivOS-Team/OlivOS/releases/download/1.0.0-rc.1/OlivOS-Linux-arm64-1.0.0-rc.1.zip"
     },
     "plugins": [
       {
@@ -116,15 +116,15 @@
       },
       {
         "name": "OlivaDiceWebUI",
-        "tag": "v20260921(3)",
+        "tag": "v26.0928.01",
         "file": "OlivaDiceWebUI.opk",
-        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%283%29/OlivaDiceWebUI.opk"
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v26.0928.01/OlivaDiceWebUI.opk"
       },
       {
         "name": "OlivaDiceWebUIStandalone",
-        "tag": "v20260921(3)",
+        "tag": "v26.0928.01",
         "file": "OlivaDiceWebUIStandalone.opk",
-        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v20260921%283%29/OlivaDiceWebUIStandalone.opk"
+        "url": "https://github.com/OlivOS-Team/OlivaDiceWebUI/releases/download/v26.0928.01/OlivaDiceWebUIStandalone.opk"
       }
     ]
   }
