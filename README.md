@@ -166,7 +166,7 @@ docker run -d \
 
 需要配的东西：
 
-**`GH_PAT`（必需）** —— `sync-release` 要往仓库里提交清单，还要触发构建工作流，这两件事默认的 `GITHUB_TOKEN` 都做不了。需要一个带 `repo` 和 `workflow` 权限的 PAT，配在仓库的 Actions secrets 里。
+**Actions 权限** —— `sync-release.yml` 使用仓库自动提供的 `GITHUB_TOKEN` 更新版本清单并派发镜像构建，不需要额外配置 PAT。工作流声明了 `contents: write` 和 `actions: write`；如果仓库或组织策略收紧了 Actions token 权限，需要允许这两项权限。派发 API 返回错误时，同步工作流会失败并显示错误，不会再把未启动的构建伪报为成功。
 
 **GHCR 包可见性（首次必须手动改一次）** —— GHCR 的包**首次推送后默认是私有的**，这时候用户 `docker pull` 会拿到 403。推完第一个镜像后去 package 的 Settings 里把 visibility 改成 public。
 

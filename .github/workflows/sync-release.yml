@@ -18,6 +18,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   sync:
@@ -30,7 +31,7 @@ jobs:
 
       - name: 解析上游版本
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           bash scripts/resolve-release.sh > /tmp/new_manifest.json
           echo "解析结果："
@@ -95,23 +96,29 @@ jobs:
       - name: 提交清单并触发构建
         if: env.STABLE == 'true' || env.PRE == 'true'
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           cp /tmp/new_manifest.json release_info.json
 
           git config user.name "github-actions"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add release_info.json
           git commit -m "更新上游版本 - stable: $(jq -r '.stable.app.tag' release_info.json), pre: $(jq -r '.pre.app.tag' release_info.json)"
-          git push "https://${{ github.actor }}:$GH_PAT@github.com/${{ github.repository }}.git"
+          # checkout 已用 GITHUB_TOKEN 配置 origin 凭据；权限由上面的 contents: write 提供。
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
           dispatch() {
             echo "触发 $1 通道构建"
-            curl -sS -X POST \
-              -H "Authorization: Bearer $GH_PAT" \
-              -H "Accept: application/vnd.github.v3+json" \
+            curl --fail-with-body --silent --show-error --request POST \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${{ github.repository }}/actions/workflows/docker-publish.yml/dispatches" \
-              -d '{"ref": "main", "inputs": {"build_type": "'"$1"'"}}'
+              -d '{"ref": "'"$GITHUB_REF_NAME"'", "inputs": {"build_type": "'"$1"'"}}' \
+              || {
+                echo "::error::派发 $1 镜像构建失败；请检查 Actions token 的 actions:write 权限及 API 响应。"
+                return 1
+              }
           }
 
           if [ "$STABLE" = "true" ]; then dispatch stable; fi
