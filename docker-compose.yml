@@ -5,7 +5,7 @@
 
 services:
   olivos-app:
-    image: ghcr.io/olivos-team/olivadicedocker:latest
+    image: ghcr.io/olivos-team/olivadice:latest
     container_name: olivos-main
     working_dir: /app/OlivOS
     volumes:

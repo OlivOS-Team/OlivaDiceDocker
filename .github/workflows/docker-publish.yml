@@ -64,9 +64,10 @@ jobs:
             ARCH_NOTE="仅 amd64（上游暂无 arm64 产物）"
           fi
 
-          # GHCR 的镜像路径必须全小写，直接从仓库名推导——
-          # 这样以后换仓库名或换组织，这里都不用跟着改
-          GHCR_REPO="ghcr.io/$(printf '%s' "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          # 保留 GitHub 仓库所属组织，但镜像包名固定为 olivadice，
+          # 不跟随源码仓库名 OlivaDiceDocker。
+          GHCR_OWNER="${GITHUB_REPOSITORY%%/*}"
+          GHCR_REPO="ghcr.io/$(printf '%s' "$GHCR_OWNER" | tr '[:upper:]' '[:lower:]')/olivadice"
 
           # 推到 Docker Hub 是可选的，而且这里的仓库名从仓库变量读，
           # 代码里不写死任何具体账号。三个值齐了才推，缺一个就只推 GHCR。

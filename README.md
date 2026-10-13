@@ -4,7 +4,7 @@
 
 镜像不依赖上游源码。构建时直接下载上游 release 里编译好的产物——主程序用 PyInstaller 打好的单文件二进制，插件用各自 release 里的 opk。所以构建很快，镜像里也不需要 Python 环境。
 
-镜像地址：`ghcr.io/olivos-team/olivadicedocker`
+镜像地址：`ghcr.io/olivos-team/olivadice`
 
 ## 镜像标签
 
@@ -95,7 +95,7 @@ docker run -d \
   -e MODE=napcat \
   -v "$PWD/OlivOS:/app/OlivOS" \
   -v "$PWD/napcat/config:/app/napcat/config" \
-  ghcr.io/olivos-team/olivadicedocker:latest
+  ghcr.io/olivos-team/olivadice:latest
 ```
 
 两个容器没有启动顺序要求，谁先起来都行——OlivOS 连不上 NapCat 时会自己重试。
