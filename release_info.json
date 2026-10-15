@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-15T11:06:31Z",
+  "generated_at": "2026-10-15T21:07:37Z",
   "stable": {
     "app": {
       "tag": "1.0.0",
@@ -74,9 +74,9 @@
     "plugins": [
       {
         "name": "OlivaDiceCore",
-        "tag": "3.5.0",
+        "tag": "3.5.1-beta.1",
         "file": "OlivaDiceCore.opk",
-        "url": "https://github.com/OlivOS-Team/OlivaDiceCore/releases/download/3.5.0/OlivaDiceCore.opk"
+        "url": "https://github.com/OlivOS-Team/OlivaDiceCore/releases/download/3.5.1-beta.1/OlivaDiceCore.opk"
       },
       {
         "name": "OlivaDiceJoy",
