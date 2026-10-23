@@ -105,6 +105,8 @@ docker run -d \
 
 两个容器没有启动顺序要求，谁先起来都行——OlivOS 连不上 NapCat 时会自己重试。
 
+镜像也支持把登录端换成 LLBot：环境变量传 `MODE=llbot`，初始化脚本会把账号的 SDK 地址指向 `http://llbot`、登录端配置写成 LLBot 的格式。但仓库里**没有提供 LLBot 的 compose 示例**，得自己按上面同样的思路组装一个名为 `llbot` 的容器。
+
 ## 管理面板
 
 这里有两个不同的 WebUI，别混了。
@@ -156,7 +158,7 @@ mv OlivOS/data     data/resources 2>/dev/null || true
 
 搬完把旧的 `OlivOS/` 目录删掉就行。里面的源码和构建产物新方案根本不用，`conf/` 和 `plugin/` 已经搬走了。
 
-如果之前用的是更早那种在容器内拉源码的老方案，那个 `OlivOS/` 目录里还躺着一整套源码——同样不要了，删掉即可。入口脚本里也留了一手清理逻辑，万一还有人整个目录挂进去，启动时会把源码残留清掉，否则那个和可执行文件同名的 `OlivOS/` 目录会让程序起不来。
+如果之前用的是更早那种在容器内拉源码的老方案，那个 `OlivOS/` 目录里还躺着一整套源码——同样不要了，删掉即可。入口脚本会检查这种情况：万一还有人把整个目录挂进来，`/app/OlivOS/OlivOS` 是个目录而不是可执行文件，容器会直接报错并提示按上面的步骤迁移，不会默默删掉你的文件。
 
 ## 配置是怎么生成的
 
@@ -164,6 +166,7 @@ mv OlivOS/data     data/resources 2>/dev/null || true
 
 - `conf/config.json` —— 确保 WebUI 监听地址是 `0.0.0.0`。只改这一个字段，端口、令牌路径、以及其它模型的配置都保持你设的值。
 - `conf/account.json` —— 确保当前 `MODE` 对应的账号在。**已有账号一律保留**：你另外配的 kook、别的 QQ、别的接入方式都不会被删掉；同 id 的条目也只在缺字段时补齐，不会整个替换。
+- `conf/account.json` 里的 `server.type` —— 值是 `port` 的会被改成 `post`。OlivOS 1.0.0 起只认 `post` / `auto` / `websocket` / `websocket_host`，写 `port` 的账号会被整笔跳过，症状是收不到任何消息。改之前原文件会备份成 `account.json.bak-port-type`。
 - NapCat / LLBot 的登录端配置 —— 文件不存在才生成，已存在的一律不动。
 
 配置如果是坏的 JSON（比如手工改崩了），会先备份成 `*.broken-<时间戳>` 再重建，不会直接丢掉。整个脚本是幂等的，重复启动不会有额外改动。
@@ -181,9 +184,9 @@ mv OlivOS/data     data/resources 2>/dev/null || true
 
 ## 架构说明
 
-目前只发布 `linux/amd64`。
+`linux/amd64` 和 `linux/arm64` 都发。`docker pull` 会按宿主机的架构自动选，不需要指定。
 
-上游 OlivOS 的构建流程只产出 x86-64 的 Linux 包，暂时没有 arm64。构建流程已经按双架构写好了——清单里 `arm64` 那一格一旦有地址，镜像就会自动开始发 arm64，不需要再改任何配置。
+上游从 1.0.0 起两个架构都有产物，镜像跟着清单走——`release_info.json` 里 `arm64` 有地址就发双架构，没有就只发 amd64，不用改配置。
 
 ## 维护说明
 

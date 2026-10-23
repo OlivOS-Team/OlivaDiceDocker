@@ -17,26 +17,16 @@ PLUGIN_DIR="${APP_DIR}/plugin/app"
 
 log() { echo "[entrypoint] $*"; }
 
-# ---------- 1. 清理源码模式留下的残留 ----------
-# 现在是留给老用户的兜底：更早的镜像是在容器里 git clone 源码然后 pip install
-# 跑的，那时候 /app/OlivOS 是用户挂载进来的，里面躺着一整套源码。最关键的一条：
-# 那套源码里的 OlivOS/ 是个目录（Python 包），而现在的 OlivOS 是个可执行文件，
-# 两者同名。不先删掉的话，下面拷贝时 cp 会把二进制塞进那个目录里面，
-# 程序起来就是找不到文件。
-#
-# 新版 compose 已经不再把 /app/OlivOS 挂进来了，正常情况下这整段都不会命中。
+# ---------- 1. 检查旧版挂载方式 ----------
+# 新版 compose 只挂数据子目录，/app/OlivOS 是容器内的运行目录。如果有人还按老办法
+# 把整个目录挂进来，里面可能躺着一个和可执行文件同名的 OlivOS/ 目录（源码模式
+# 留下的 Python 包），下面拷贝时 cp 会把二进制塞进那个目录里，程序起来找不到文件。
+# 这种情况直接报错说清楚，不替用户删东西。
 if [ -d "${APP_DIR}/OlivOS" ]; then
-    log "清理源码模式残留：OlivOS/ 目录与新方案的可执行文件同名"
-    rm -rf "${APP_DIR}/OlivOS"
+    log "错误：${APP_DIR}/OlivOS 是个目录，与可执行文件同名，程序起不来"
+    log "看起来还在用旧版 compose（整个 /app/OlivOS 挂进来）。请按 README 的迁移步骤把数据搬到 data/ 下"
+    exit 1
 fi
-
-# 其余都是纯源码/构建期产物，新方案用不到
-for leftover in main.py setup.py pyproject.toml OlivOS.spec OlivOS.egg-info hook script __pycache__; do
-    if [ -e "${APP_DIR}/${leftover}" ]; then
-        log "清理源码模式残留：${leftover}"
-        rm -rf "${APP_DIR}/${leftover}"
-    fi
-done
 
 # ---------- 2. 同步程序文件 ----------
 mkdir -p "${APP_DIR}" "${PLUGIN_DIR}"

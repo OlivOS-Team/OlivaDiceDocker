@@ -94,7 +94,7 @@ init_webui_host() {
 # MODE 决定要保证存在哪个账号。这里只保证"这个账号在"，不动其它账号——
 # 用户可能同时配了 kook、别的 QQ 或者别的接入方式，那些必须原样留着。
 init_account() {
-    local host entry current base out
+    local host entry current base out port_fixed
     if [ "${MODE}" = "llbot" ]; then
         host="http://llbot"
     else
@@ -109,7 +109,7 @@ init_account() {
         model_type: "default",
         server: {
             auto: false,
-            type: "port",
+            type: "post",
             host: $host,
             port: 5700,
             access_token: "7777777"
@@ -125,11 +125,23 @@ init_account() {
     fi
     if [ -z "${current}" ]; then base='{}'; else base="${current}"; fi
 
+    # server.type 只认 post / auto / websocket / websocket_host。写 "port" 的账号
+    # 会被整笔跳过，表现是收不到任何消息。旧版本容忍这个值，1.0.0 起开始校验，
+    # 所以既有的 "port" 也要顺手改掉。
+    port_fixed=$(printf '%s' "${base}" | jq '[.account[]?
+        | select(((.server // null) | type) == "object" and .server.type == "port")] | length' 2>/dev/null || echo 0)
+
     # 已有同 id 的条目就在它基础上补缺（$entry + . 是"以现有值为准"，
     # 只补上现有条目缺的键），没有才追加。绝不重建整个数组。
     out=$(printf '%s' "${base}" | jq --argjson e "${entry}" '
+        def fix_server_type:
+            if ((.server // null) | type) == "object" and .server.type == "port"
+            then .server.type = "post"
+            else . end;
+
         .account = (
             (if ((.account // null) | type) == "array" then .account else [] end)
+            | map(fix_server_type)
             | if any(.[]; (.id | tostring) == ($e.id | tostring))
               then map(if (.id | tostring) == ($e.id | tostring) then ($e + .) else . end)
               else . + [$e]
@@ -140,6 +152,11 @@ init_account() {
     if [ "${current}" = "$(printf '%s' "${out}")" ]; then
         log "账号 ${UIN} 已存在，无需改动（其它平台的账号保持原样）"
         return
+    fi
+
+    if [ "${port_fixed}" != "0" ] && [ -f "${ACCOUNT_FILE}" ]; then
+        cp "${ACCOUNT_FILE}" "${ACCOUNT_FILE}.bak-port-type"
+        log "有 ${port_fixed} 个账号的 server.type 是 port，1.0.0 起不再接受、会被整笔跳过；原文件已备份为 account.json.bak-port-type"
     fi
 
     printf '%s\n' "${out}" > "${ACCOUNT_FILE}"
