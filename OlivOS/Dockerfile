@@ -21,8 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG BUILD_TYPE=stable
 ARG TARGETARCH=amd64
 
-# 程序一律先落在 /release-backup，启动时由入口脚本同步进数据目录。
-# 好处是镜像里永远持有一份干净副本，用户把挂载目录清空了也能自愈。
+# 程序一律先落在 /release-backup，启动时由入口脚本同步进 /app/OlivOS。
+# 好处是镜像里永远持有一份干净副本，运行目录被清空了也能自愈。
+# /app/OlivOS 不挂载，只有 conf/ plugin/ logfile/ data/ 这些数据子目录挂出来。
 RUN mkdir -p /release-backup/plugin/app /release-backup/napcat/config
 
 COPY release_info.json /tmp/release_info.json

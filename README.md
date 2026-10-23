@@ -4,7 +4,7 @@
 
 镜像不依赖上游源码。构建时直接下载上游 release 里编译好的产物——主程序用 PyInstaller 打好的单文件二进制，插件用各自 release 里的 opk。所以构建很快，镜像里也不需要 Python 环境。
 
-镜像地址：`ghcr.io/olivos-team/olivadice`
+镜像地址：`olivosteam/olivadice`
 
 ## 镜像标签
 
@@ -72,6 +72,7 @@ ACCOUNT=你的骰娘QQ号
 docker network create olivos
 
 # 登录端
+# 后面两个 OlivOS 数据目录也要挂进来，NapCat 发图发文件要按同样的路径读。
 docker run -d \
   --name napcat \
   --network olivos \
@@ -81,7 +82,8 @@ docker run -d \
   -e MODE=olivos \
   -v "$PWD/napcat/config:/app/napcat/config" \
   -v "$PWD/napcat/QQ_DATA:/app/.config/QQ" \
-  -v "$PWD/OlivOS:/app/OlivOS" \
+  -v "$PWD/data/resources:/app/OlivOS/data" \
+  -v "$PWD/data/plugin:/app/OlivOS/plugin" \
   mlikiowa/napcat-docker:latest
 
 # OlivOS 本体
@@ -93,9 +95,12 @@ docker run -d \
   -p 20480:20480 \
   -e LOGIN_UIN=${ACCOUNT} \
   -e MODE=napcat \
-  -v "$PWD/OlivOS:/app/OlivOS" \
+  -v "$PWD/data/conf:/app/OlivOS/conf" \
+  -v "$PWD/data/plugin:/app/OlivOS/plugin" \
+  -v "$PWD/data/logfile:/app/OlivOS/logfile" \
+  -v "$PWD/data/resources:/app/OlivOS/data" \
   -v "$PWD/napcat/config:/app/napcat/config" \
-  ghcr.io/olivos-team/olivadice:latest
+  olivosteam/olivadice:latest
 ```
 
 两个容器没有启动顺序要求，谁先起来都行——OlivOS 连不上 NapCat 时会自己重试。
@@ -104,12 +109,9 @@ docker run -d \
 
 这里有两个不同的 WebUI，别混了。
 
-**OlivOS 自带的 WebUI** —— 默认监听 **20480**，compose 里映射的就是这个。登录要输令牌，令牌在 `conf/webui_token.txt`，第一次启动时自动生成。
+**OlivOS 自带的 WebUI** —— 默认监听 **20480**，compose 里映射的就是这个。登录要输令牌，令牌在 `data/conf/webui_token.txt`，第一次启动时自动生成。
 
-有两点要注意：
-
-- 容器启动时初始化脚本会自动把 `models.OlivOS_webUI.server.host` 写成 `0.0.0.0`。上游默认绑 `127.0.0.1`，容器里那样映射出去也没人连得上，所以替你改了。只动 host 这一个字段，你自己设过的端口、令牌路径都保留。
-- 这个功能目前只在**预发布通道**（0.11.90-alpha.x）里有，稳定版 0.11.81 还没合进去。用 stable 的话这个端口是空的。
+容器启动时初始化脚本会自动把 `models.OlivOS_webUI.server.host` 写成 `0.0.0.0`。上游默认绑 `127.0.0.1`，容器里那样映射出去也没人连得上，所以替你改了。只动 host 这一个字段，你自己设过的端口、令牌路径都保留。
 
 **OlivaDiceWebUI 插件** —— 镜像里带了它的两个版本，跟上面那个是两回事：
 
@@ -120,13 +122,41 @@ docker run -d \
 
 ## 数据目录
 
-所有数据都在 compose 文件同级的 `OlivOS/` 目录：
+挂出来的只有需要持久化的目录，程序本体留在容器里。这样升级就是换个镜像，用户也碰不到程序文件，不会因为误删、误改或者权限问题把程序弄坏。
 
-- `conf/` —— OlivOS 自身配置，第一次启动自动生成
-- `plugin/app/` —— 插件 opk，镜像里带的那些会在启动时更新
-- `plugin/data/` —— 骰子数据、人物卡、存档，升级不会动
+compose 文件同级：
 
-你自己放进 `plugin/app/` 的第三方插件不会被碰，只有镜像里固定的那几个会被更新。
+- `data/conf/` —— OlivOS 自身配置：`account.json`、`config.json`、WebUI 令牌，第一次启动自动生成
+- `data/plugin/` —— 插件相关的几块：
+  - `app/` —— 插件 opk，镜像里带的那些会在启动时更新
+  - `conf/` —— 插件自己的设置
+  - `data/` —— 骰子数据、人物卡、存档，升级不会动
+  - `backup/` —— 插件自己做的备份
+- `data/logfile/` —— 运行日志
+- `data/resources/` —— 容器里 `/app/OlivOS/data` 的落地处，放 `images/` 这些资源。**发图发文件要靠它**，见下面
+- `napcat/` —— 登录端配置与 QQ 数据，属于 NapCat 自己管的目录
+
+你自己放进 `data/plugin/app/` 的第三方插件不会被碰，只有镜像里固定的那几个会被更新。
+
+`data/resources/` 和 `data/plugin/` 这两个目录**同时也挂给了 NapCat 容器**，而且是挂在同样的绝对路径下。原因是 NapCat 发图不是把文件内容塞进报文——OlivOS 会把相对路径的图片重定向到 `/app/OlivOS/data/images/`，然后用 `file:///<绝对路径>` 交给 NapCat，NapCat 得在自己文件系统里读到那个路径。两个容器看到的路径不一致，图就发不出去。
+
+`data/resources/webui/` 是 WebUI 前端，每次启动从镜像里释放出来；`data/plugin/tmp/` 是插件临时文件。这两处也在挂载目录里，但删了都能自己长回来。
+
+### 从旧版挂载方式迁移
+
+以前的 compose 是把整个 `./OlivOS` 目录挂进容器的，数据都在那下面。新版只挂数据子目录，所以要把数据搬到新位置，否则容器会当成全新安装：
+
+```bash
+mkdir -p data
+mv OlivOS/conf     data/conf
+mv OlivOS/plugin   data/plugin
+mv OlivOS/logfile  data/logfile  2>/dev/null || true
+mv OlivOS/data     data/resources 2>/dev/null || true
+```
+
+搬完把旧的 `OlivOS/` 目录删掉就行。里面的源码和构建产物新方案根本不用，`conf/` 和 `plugin/` 已经搬走了。
+
+如果之前用的是更早那种在容器内拉源码的老方案，那个 `OlivOS/` 目录里还躺着一整套源码——同样不要了，删掉即可。入口脚本里也留了一手清理逻辑，万一还有人整个目录挂进去，启动时会把源码残留清掉，否则那个和可执行文件同名的 `OlivOS/` 目录会让程序起不来。
 
 ## 配置是怎么生成的
 
@@ -137,8 +167,6 @@ docker run -d \
 - NapCat / LLBot 的登录端配置 —— 文件不存在才生成，已存在的一律不动。
 
 配置如果是坏的 JSON（比如手工改崩了），会先备份成 `*.broken-<时间戳>` 再重建，不会直接丢掉。整个脚本是幂等的，重复启动不会有额外改动。
-
-如果之前用的是容器内拉源码的老方案，数据目录里会残留一整套源码。入口脚本启动时会先清掉这些——特别是那个 `OlivOS/` 目录，它和新的可执行文件同名，不清掉会直接导致程序起不来。`conf/` 和 `plugin/data/` 都会原样保留。
 
 ## 更新机制
 

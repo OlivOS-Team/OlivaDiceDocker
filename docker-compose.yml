@@ -5,25 +5,24 @@
 
 services:
   olivos-app:
-    image: ghcr.io/olivos-team/olivadice:latest
+    image: olivosteam/olivadice:latest
     container_name: olivos-main
-    working_dir: /app/OlivOS
     volumes:
-      # 程序和数据都在这个目录里。升级时入口脚本只覆盖程序文件，
-      # conf/ 与 plugin/data/ 不会被动。
-      - "./OlivOS:/app/OlivOS"
-      - "./napcat/config:/app/napcat/config"
+      # 只挂需要持久化的目录，程序本体留在容器里。
+      # 升级换个镜像就完事，用户碰不到程序文件，也不会因为误删、误改
+      # 或者权限问题把程序弄坏。
+      - "./data/conf:/app/OlivOS/conf"            # 账号、config.json、WebUI 令牌
+      - "./data/plugin:/app/OlivOS/plugin"        # 插件本体 / 插件设置 / 骰子数据
+      - "./data/logfile:/app/OlivOS/logfile"      # 运行日志
+      - "./data/resources:/app/OlivOS/data"       # 图片等资源，发图发文件要从这里读
+      - "./napcat/config:/app/napcat/config"      # 启动时给 NapCat 写 OneBot 配置
     environment:
       - LOGIN_UIN=${ACCOUNT}
       - MODE=napcat
     ports:
-      # OlivOS 自带的 WebUI，默认监听 20480。登录令牌在 conf/webui_token.txt，
-      # 第一次启动时自动生成。
-      #
-      # 两点要注意：
-      #   1. 它默认只绑 127.0.0.1，光映射端口在外面是连不上的，需要在
-      #      conf/config.json 里把 models.OlivOS_webUI.server.host 改成 0.0.0.0；
-      #   2. 这个功能目前只在预发布通道（0.11.90-alpha.x）里有，稳定版还没有。
+      # OlivOS 自带的 WebUI。登录令牌在 data/conf/webui_token.txt，第一次启动时
+      # 自动生成。初始化脚本会把监听地址改成 0.0.0.0，不然容器里绑 127.0.0.1
+      # 外面连不上。
       - "20480:20480"
       # OlivaDiceWebUI 独立服务版的管理页面，默认监听 8765。它和上面 OlivOS 自带的
       # WebUI 是两个不同的东西，需要的话自己把这行打开。
@@ -42,7 +41,12 @@ services:
     volumes:
       - "./napcat/config:/app/napcat/config"
       - "./napcat/QQ_DATA:/app/.config/QQ"
-      - "./OlivOS:/app/OlivOS"
+      # NapCat 发图发文件读的是本地路径，不是把内容塞进 OneBot 报文。
+      # OlivOS 把相对路径的图片重定向到 /app/OlivOS/data/images 之后，
+      # 用 file:///<绝对路径> 交给 NapCat，所以 NapCat 必须在同一个绝对路径
+      # 下看到这些文件。这两个挂载就是干这个的，路径要和上面 olivos-app 一致。
+      - "./data/resources:/app/OlivOS/data"
+      - "./data/plugin:/app/OlivOS/plugin"
     environment:
       - ACCOUNT=${ACCOUNT}
       - MODE=olivos
