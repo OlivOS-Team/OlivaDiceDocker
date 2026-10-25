@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-15T21:07:37Z",
+  "generated_at": "2026-10-25T23:43:20Z",
   "stable": {
     "app": {
       "tag": "1.0.0",
@@ -66,10 +66,10 @@
   },
   "pre": {
     "app": {
-      "tag": "1.0.1-beta.1",
-      "published_at": "2026-10-15T07:21:06Z",
-      "amd64": "https://github.com/OlivOS-Team/OlivOS/releases/download/1.0.1-beta.1/OlivOS-Linux-1.0.1-beta.1.zip",
-      "arm64": "https://github.com/OlivOS-Team/OlivOS/releases/download/1.0.1-beta.1/OlivOS-Linux-arm64-1.0.1-beta.1.zip"
+      "tag": "1.0.2-beta.1",
+      "published_at": "2026-10-25T23:36:59Z",
+      "amd64": "https://github.com/OlivOS-Team/OlivOS/releases/download/1.0.2-beta.1/OlivOS-Linux-1.0.2-beta.1.zip",
+      "arm64": "https://github.com/OlivOS-Team/OlivOS/releases/download/1.0.2-beta.1/OlivOS-Linux-arm64-1.0.2-beta.1.zip"
     },
     "plugins": [
       {
